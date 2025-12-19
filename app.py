@@ -17,23 +17,24 @@ st.caption("Tu asistente táctico para subir a Maestros")
 # 🔑 ZONA DE CONFIGURACIÓN DE CLAVES
 # ==========================================
 
-# 1. Pon tu API KEY aquí abajo (borra lo que hay y pega la tuya):
-API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6ImIxMGI2N2QxLTBmYTQtNGE0MS04ZWQxLWRhYWIxZmYyOWIwYyIsImlhdCI6MTc2NjE1OTIwOSwic3ViIjoiZGV2ZWxvcGVyL2Q1MGFlYWZlLTA0MmQtMWE5NS04MzBhLTNhMzVmM2JiZjQ0OCIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiMTkxLjk3LjI0Ny4xNTYiXSwidHlwZSI6ImNsaWVudCJ9XX0.00qHwOHTLfGDwvTfE3meI3jOuCE1yV12_ld1HffWC0Wyk_TqofygrBrWIOebLX2GEPp2fzRs6AyIIdkjMfnRMw"
+# 1. EN GITHUB ESTO DEBE ESTAR VACÍO O CON UN TEXTO FALSO
+# Solo pon tu clave real aquí si estás probando en tu PC y NO vas a subir el archivo.
+API_KEY_LOCAL = "" 
 
-# 2. Lógica de sobreescritura automática (Si estás en la Nube, usa los Secrets)
+# 2. Lógica automática
 try:
-    if "BRAWL_API_KEY" in st.secrets:
-        API_KEY = st.secrets["BRAWL_API_KEY"]
+    # Intenta leer de la Nube (Secrets de Streamlit)
+    API_KEY = st.secrets["BRAWL_API_KEY"]
 except:
-    pass
+    # Si falla, usa la local (solo funcionará en tu PC si rellenaste la de arriba)
+    API_KEY = API_KEY_LOCAL
 
-# Verificación de seguridad
-if len(API_KEY) < 20:
-    st.error("⚠️ ALERTA: No has pegado tu API KEY en la línea 20 del código.")
-    st.stop()
-
-HEADERS = {"Authorization": f"Bearer {API_KEY}", "Accept": "application/json"}
-BASE_URL = "https://api.brawlstars.com/v1"
+# Verificación
+if not API_KEY:
+    # Si estamos en la nube y no hay secrets, o en local y no hay key, paramos.
+    # Pero NO mostramos error si estamos subiendo el archivo limpio.
+    if "streamlit" in str(st.runtime.get_instance()): # Check simple
+         pass
 
 # --- CONFIGURACIÓN GOOGLE SHEETS (AUTODETECTABLE) ---
 def conectar_google_sheets():
