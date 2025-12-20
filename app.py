@@ -267,14 +267,16 @@ with bloque_izq:
         st.markdown("""
         **Guía Rápida:**
         1. **📍 Mapa:** Selecciónalo.
-        2. **⚔️ Draft:** Ingresa brawlers enemigos (counters) / aliados (sinergias).
-        3. **🧠 Análisis:** Revisa la tabla ordenada por Puntuación.
-        4. **🚫 Bans:** Si la App recomienda algo con puntaje 90+ y no tienes el primer pick, **BANÉALO**.
+        2. **⚔️ Draft:** Ingresa brawlers enemigos (descubre sus counters) / ingresa tus aliados (descubre sus sinergias).
+        3. **🧠 Análisis:** Revisa la tabla ordenada por Meta y Puntuación.
+        4. **🚫 Fase de Bans:** La App no tiene botón de "Bans", pero tú usa tu cerebro: Si la App dice que Piper y Nani son las mejores (tienen el puntaje más alto), **BANÉALAS** si no tienes el primer pick, o déjalas libres si tú vas a elegir primero.
         
         **Leyenda:**
-        * **💎 Meta:** Muy popular (Tier S).
-        * **⚠️ Bajo:** Pocos datos (Tier D o desconocido).
-        * **🔥/💀 Tu Stats:** Sincroniza tu perfil para ver tu winrate personal con ese brawler.
+        * **💎 Meta:** Brawlers muy populares (Tier S).
+        * **⚠️ Bajo:** Pocos datos. Arriesgado.
+        * **🔥/💀 Tu rendimiento personal:** Agrega tu Player Tag y "sincroniza el historial" para conocer tus puntos fuertes y débiles.
+        
+        **⚠️ ¡ATENCIÓN!** Hay un límite de registro de partidas en el juego: ¡son tus últimas **25 partidas jugadas**! Sé inteligente y carga/sincroniza tus partidas cada vez que juegues Ranked para ir acumulando datos en tu historial.
         """)
 
 # --- B. BLOQUE DERECHO ---
@@ -285,9 +287,17 @@ with bloque_der:
         st.markdown("### 🧠 Recomendaciones")
     
     with col_ajustes:
-        with st.popover("⚙️ Ajustes"):
+        with st.popover("⚙️ Ajustes", help="Configurar cálculo matemático"):
             st.markdown("**Calibración IA**")
-            C = st.slider("Suavizado (C)", 0, 200, 100, 10)
+            C = st.slider(
+                "Suavizado (C)", 
+                min_value=0, 
+                max_value=200, 
+                value=100, 
+                step=10,
+                help="Partidas 'fantasma' añadidas. Mayor valor = Prioriza brawlers con muchas partidas."
+            )
+            st.caption(f"Valor actual: {C}")
 
     if not meta_mapa.empty:
         recomendaciones = meta_mapa.copy()
