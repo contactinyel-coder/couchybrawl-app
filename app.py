@@ -4,15 +4,6 @@ import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- BLOQUE DE DIAGNÓSTICO (BORRAR DESPUÉS) ---
-try:
-    ip_servidor = requests.get('https://api.ipify.org').text
-    st.warning(f"⚠️ La IP de este servidor es: {ip_servidor}")
-    st.info("Copia esa IP, ve a developer.brawlstars.com, edita tu llave y añade esa IP a la lista.")
-except:
-    st.error("No se pudo detectar la IP.")
-# ---------------------------------------------
-
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="CouchyBrawl", layout="wide", initial_sidebar_state="expanded")
 
