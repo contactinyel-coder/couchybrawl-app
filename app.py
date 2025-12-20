@@ -17,31 +17,28 @@ st.caption("Tu asistente táctico para subir a Maestros")
 # 🔑 ZONA DE CONFIGURACIÓN DE CLAVES
 # ==========================================
 
-# 1. EN GITHUB ESTO DEBE ESTAR VACÍO O CON UN TEXTO FALSO
-# Solo pon tu clave real aquí si estás probando en tu PC y NO vas a subir el archivo.
+# 1. EN GITHUB ESTO DEBE ESTAR VACÍO ("")
+# Solo pon tu clave real aquí si estás probando en tu PC y NO vas a usar Secrets.
 API_KEY_LOCAL = "" 
 
-# 2. Lógica automática
+# 2. Lógica automática (Prioridad a la Nube)
 try:
     # Intenta leer de la Nube (Secrets de Streamlit)
     API_KEY = st.secrets["BRAWL_API_KEY"]
 except:
-    # Si falla, usa la local (solo funcionará en tu PC si rellenaste la de arriba)
+    # Si falla, usa la local
     API_KEY = API_KEY_LOCAL
 
-# Verificación para evitar errores si no hay clave
+# Verificación de seguridad
 if not API_KEY:
-    # Si estamos en local y vacío, paramos. Si es nube, a veces carga después.
-    # Definimos una clave dummy para que no rompa la variable HEADERS abajo
-    API_KEY = "CLAVE_NO_ENCONTRADA"
+    # Si estamos subiendo a GitHub limpio, esto evita errores visuales hasta que se configure
+    API_KEY = "TOKEN_NO_CONFIGURADO"
 
-# --- ESTO ES LO QUE TE FALTABA ---
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Accept": "application/json"}
 BASE_URL = "https://api.brawlstars.com/v1"
-# ----------------------------------
 
 # --- CONFIGURACIÓN GOOGLE SHEETS (AUTODETECTABLE) ---
-def conectar_google_sheets():    
+def conectar_google_sheets():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     
     # Intentamos primero leer de la Nube (Secrets)
@@ -50,7 +47,7 @@ def conectar_google_sheets():
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     except:
-        # Si falla, asumimos que estamos en LOCAL y buscamos el archivo
+        # Si falla, asumimos que estamos en LOCAL y buscamos el archivo json
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name('secrets.json', scope)
         except FileNotFoundError:
@@ -88,7 +85,7 @@ def load_global_data():
 df = load_global_data()
 
 if df is None:
-    st.error("❌ Falta el archivo 'datos_ranked_raw.csv'. Ejecuta el recolector primero.")
+    st.error("❌ Falta el archivo 'datos_ranked_raw.csv'. Sube el archivo CSV al repositorio.")
     st.stop()
 
 # --- FUNCIONES AUXILIARES ---
@@ -96,7 +93,7 @@ def limpiar_seleccion():
     st.session_state['enemigos_key'] = []
     st.session_state['aliados_key'] = []
 
-# --- 2. GESTIÓN CLOUD (FILTRO DE MAPAS RANKED AÑADIDO) ---
+# --- 2. GESTIÓN CLOUD (CON PROXY Y FILTROS) ---
 def actualizar_historial_nube(player_tag):
     clean_tag = player_tag.replace("#", "").upper()
     
@@ -107,12 +104,22 @@ def actualizar_historial_nube(player_tag):
         st.error(f"❌ Error conectando a Google Sheets: {e}")
         return pd.DataFrame()
 
-    # Conexión API Brawl Stars
+    # Preparar conexión API Brawl Stars
     url = f"{BASE_URL}/players/%23{clean_tag}/battlelog"
     nuevos = []
     
+    # --- LÓGICA DE PROXY PARA IP FIJA ---
+    proxies = {}
+    if "proxy" in st.secrets:
+        # Si existe la configuración en secrets, usamos el proxy
+        proxies = {
+            "http": st.secrets["proxy"]["server"],
+            "https": st.secrets["proxy"]["server"]
+        }
+
     try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
+        # Hacemos la petición pasando el parámetro 'proxies'
+        response = requests.get(url, headers=HEADERS, timeout=10, proxies=proxies)
         
         if response.status_code == 200:
             data = response.json()
@@ -125,10 +132,9 @@ def actualizar_historial_nube(player_tag):
                 battle = item.get('battle', {})
                 event = item.get('event', {})
                 battle_time = item.get('battleTime')
-                map_name = event.get('map') # Capturamos nombre del mapa
+                map_name = event.get('map') 
                 
-                # --- NUEVO FILTRO DE MAPA RANKED ---
-                # Si el mapa NO está en nuestra lista de Ranked, lo saltamos.
+                # --- FILTRO: SOLO MAPAS DE RANKED ---
                 if map_name not in MAPAS_RANKED:
                     continue 
 
@@ -161,7 +167,7 @@ def actualizar_historial_nube(player_tag):
             st.error(f"❌ Jugador no encontrado. Verifica el Tag: #{clean_tag}")
             return pd.DataFrame()
         elif response.status_code == 403:
-            st.error("❌ Error de Permisos (403). Tu API KEY es incorrecta o expiró.")
+            st.error("❌ Error de Permisos (403). Revisa el API Key o la configuración del Proxy.")
             return pd.DataFrame()
         else:
             st.error(f"❌ Error API Brawl Stars: Código {response.status_code}")
@@ -187,7 +193,6 @@ def actualizar_historial_nube(player_tag):
         else:
             st.toast("✅ Sin novedades (partidas ya guardadas).", icon="ℹ️")
     else:
-        # Mensaje modificado para aclarar por qué no se guardó nada
         st.toast("✅ Sincronizado (No hay partidas RANKED nuevas en el log).", icon="ℹ️")
             
     final = hoja.get_all_records()
@@ -262,16 +267,14 @@ with bloque_izq:
         st.markdown("""
         **Guía Rápida:**
         1. **📍 Mapa:** Selecciónalo.
-        2. **⚔️ Draft:** Ingresa brawlers enemigos (descubre sus counters) / ingresa tus aliados (descubre sus sinergias).
-        3. **🧠 Análisis:** Revisa la tabla ordenada por Meta y Puntuación.
-        4. **🚫 Fase de Bans:** La App no tiene botón de "Bans", pero tú usa tu cerebro: Si la App dice que Piper y Nani son las mejores (tienen el puntaje más alto), **BANÉALAS** si no tienes el primer pick, o déjalas libres si tú vas a elegir primero.
+        2. **⚔️ Draft:** Ingresa brawlers enemigos (counters) / aliados (sinergias).
+        3. **🧠 Análisis:** Revisa la tabla ordenada por Puntuación.
+        4. **🚫 Bans:** Si la App recomienda algo con puntaje 90+ y no tienes el primer pick, **BANÉALO**.
         
         **Leyenda:**
-        * **💎 Meta:** Brawlers muy populares (Tier S).
-        * **⚠️ Bajo:** Pocos datos. Arriesgado.
-        * **🔥/💀 Tu rendimiento personal:** Agrega tu Player Tag y "sincroniza el historial" para conocer tus puntos fuertes y débiles.
-        
-        **⚠️ ¡ATENCIÓN!** Hay un límite de registro de partidas en el juego: ¡son tus últimas **25 partidas jugadas**! Sé inteligente y carga/sincroniza tus partidas cada vez que juegues Ranked para ir acumulando datos en tu historial.
+        * **💎 Meta:** Muy popular (Tier S).
+        * **⚠️ Bajo:** Pocos datos (Tier D o desconocido).
+        * **🔥/💀 Tu Stats:** Sincroniza tu perfil para ver tu winrate personal con ese brawler.
         """)
 
 # --- B. BLOQUE DERECHO ---
@@ -282,22 +285,14 @@ with bloque_der:
         st.markdown("### 🧠 Recomendaciones")
     
     with col_ajustes:
-        with st.popover("⚙️ Ajustes", help="Configurar cálculo matemático"):
+        with st.popover("⚙️ Ajustes"):
             st.markdown("**Calibración IA**")
-            C = st.slider(
-                "Suavizado (C)", 
-                min_value=0, 
-                max_value=200, 
-                value=100, 
-                step=10,
-                help="Partidas 'fantasma' añadidas. Mayor valor = Prioriza brawlers con muchas partidas."
-            )
-            st.caption(f"Valor actual: {C}")
+            C = st.slider("Suavizado (C)", 0, 200, 100, 10)
 
     if not meta_mapa.empty:
         recomendaciones = meta_mapa.copy()
         
-        # 1. CÁLCULO DE SCORE
+        # 1. SCORE
         M = 0.5
         recomendaciones['wr_ajustado'] = ((recomendaciones['win_rate_mapa'] * recomendaciones['partidas_mapa'] + C*M) / (recomendaciones['partidas_mapa'] + C))
         
@@ -324,7 +319,7 @@ with bloque_der:
             
         recomendaciones['score_final'] = ((recomendaciones['wr_ajustado'] * W_MAP) + (recomendaciones['score_counter'] * W_CNT) + (recomendaciones['score_synergy'] * W_SYN)) * 100
         
-        # 2. LÓGICA DE TIERS
+        # 2. TIERS
         max_picks = recomendaciones['partidas_mapa'].max()
         if pd.isna(max_picks) or max_picks == 0: max_picks = 1 
         step = max_picks / 4
@@ -345,7 +340,7 @@ with bloque_der:
         # ORDENAR
         top_picks = recomendaciones.sort_values(by=['Tier', 'score_final'], ascending=[False, False])
         
-        # 4. MOSTRAR TABLA
+        # 4. TABLA
         personal_history = st.session_state.get('my_history', pd.DataFrame())
         
         tabla_data = []
@@ -398,13 +393,10 @@ with bloque_der:
                     max_value=100,
                 ),
                 "Tu WinRate": st.column_config.TextColumn("Tu Stats"),
-                "Picks": st.column_config.NumberColumn("Veces Jugado", format="%d"),
+                "Picks": st.column_config.NumberColumn("Picks", format="%d"),
             }
         )
     else:
         st.info("Selecciona un mapa para ver los datos.")
-
-    if not aliados and not enemigos:
-        st.caption("👈 Configura la partida en la izquierda para refinar el puntaje.")
 
     st.markdown("<br><div style='text-align: center;'><a href='#link_to_top' style='color: grey; text-decoration: none;'>⬆️ Volver Arriba</a></div>", unsafe_allow_html=True)
