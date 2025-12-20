@@ -29,15 +29,19 @@ except:
     # Si falla, usa la local (solo funcionará en tu PC si rellenaste la de arriba)
     API_KEY = API_KEY_LOCAL
 
-# Verificación
+# Verificación para evitar errores si no hay clave
 if not API_KEY:
-    # Si estamos en la nube y no hay secrets, o en local y no hay key, paramos.
-    # Pero NO mostramos error si estamos subiendo el archivo limpio.
-    if "streamlit" in str(st.runtime.get_instance()): # Check simple
-         pass
+    # Si estamos en local y vacío, paramos. Si es nube, a veces carga después.
+    # Definimos una clave dummy para que no rompa la variable HEADERS abajo
+    API_KEY = "CLAVE_NO_ENCONTRADA"
+
+# --- ESTO ES LO QUE TE FALTABA ---
+HEADERS = {"Authorization": f"Bearer {API_KEY}", "Accept": "application/json"}
+BASE_URL = "https://api.brawlstars.com/v1"
+# ----------------------------------
 
 # --- CONFIGURACIÓN GOOGLE SHEETS (AUTODETECTABLE) ---
-def conectar_google_sheets():
+def conectar_google_sheets():    
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     
     # Intentamos primero leer de la Nube (Secrets)
