@@ -43,17 +43,17 @@ TRANSLATIONS = {
         "guide_title": "📖 Cómo usar BrawlSensei",
         "guide_text": """
         **Guía Rápida:**
-        1. **📍 Mapa:** Selecciónalo arriba a la izquierda.
-        2. **⚔️ Draft:** Ingresa los brawlers enemigos (para buscar sus counters) y tus aliados (para buscar sinergias).
-        3. **🧠 Análisis:** Revisa la tabla central. Está ordenada por Tier y Puntuación.
-        4. **🚫 Fase de Bans:** Si la App recomienda un brawler con puntuación muy alta (90-100) y tú NO tienes el primer pick, **BANÉALO**.
+        1. **📍 Mapa:** Selecciónalo.
+        2. **⚔️ Draft:** Ingresa brawlers enemigos (descubre sus counters) / ingresa tus aliados (descubre sus sinergias).
+        3. **🧠 Análisis:** Revisa la tabla ordenada por Meta y Puntuación.
+        4. **🚫 Fase de Bans:** La App no tiene botón de "Bans", pero tú usa tu cerebro: Si la App dice que Piper y Nani son las mejores (tienen el puntaje más alto), **BANÉALAS** si no tienes el primer pick, o déjalas libres si tú vas a elegir primero.
         
         **Leyenda:**
-        * **💎 Meta:** Brawlers Tier S (Muy populares y efectivos).
-        * **⚠️ Bajo:** Pocos datos registrados (Arriesgado).
-        * **🔥/💀 Tu Stats:** Sincroniza tu perfil para ver tu rendimiento personal con cada brawler.
+        * **💎 Meta:** Brawlers muy populares (Tier S).
+        * **⚠️ Bajo:** Pocos datos. Arriesgado.
+        * **🔥/💀 Tu rendimiento personal:** Agrega tu Player Tag y "sincroniza el historial" para conocer tus puntos fuertes y débiles.
         
-        **⚠️ IMPORTANTE:** El juego solo guarda tus últimas **25 partidas**. Sincroniza la App frecuentemente para no perder datos.
+        **⚠️ ¡ATENCIÓN!** Hay un límite de registro de partidas en el juego: ¡son tus últimas **25 partidas jugadas**! Sé inteligente y carga/sincroniza tus partidas cada vez que juegues Ranked para ir acumulando datos en tu historial.
         """
     },
     "English": {
@@ -93,17 +93,17 @@ TRANSLATIONS = {
         "guide_title": "📖 How to use BrawlSensei",
         "guide_text": """
         **Quick Guide:**
-        1. **📍 Map:** Select it on the top left.
-        2. **⚔️ Draft:** Input enemy brawlers (to find counters) and your allies (to find synergies).
-        3. **🧠 Analysis:** Check the main table. It is sorted by Tier and Score.
-        4. **🚫 Ban Phase:** If the App recommends a brawler with a very high score (90-100) and you do NOT have the first pick, **BAN IT**.
+        1. **📍 Map:** Select it.
+        2. **⚔️ Draft:** Input enemy brawlers (find their counters) / input your allies (find their synergies).
+        3. **🧠 Analysis:** Check the table sorted by Meta and Score.
+        4. **🚫 Ban Phase:** The App has no "Ban" button, but use your brain: If the App says Piper and Nani are the best (highest score), **BAN THEM** if you don't have first pick, or leave them open if you pick first.
         
         **Legend:**
-        * **💎 Meta:** Tier S Brawlers (Very popular and effective).
-        * **⚠️ Low:** Few data recorded (Risky).
-        * **🔥/💀 Your Stats:** Sync your profile to see your personal performance with each brawler.
+        * **💎 Meta:** Very popular Brawlers (Tier S).
+        * **⚠️ Low:** Few data. Risky.
+        * **🔥/💀 Your Performance:** Add your Player Tag and "sync history" to know your strengths and weaknesses.
         
-        **⚠️ IMPORTANT:** The game only saves your last **25 matches**. Sync the App frequently to build your history.
+        **⚠️ ATTENTION!** There is a game limit: it only records your last **25 played matches**! Be smart and sync your matches every time you play Ranked to build up your history data.
         """
     }
 }
