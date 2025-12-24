@@ -4,61 +4,161 @@ import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# --- 1. DICCIONARIO DE TRADUCCIONES (IDIOMAS) ---
+TRANSLATIONS = {
+    "Español": {
+        "title": "🏆 BrawlSensei",
+        "caption": "Tu asistente táctico para subir a Maestros",
+        "sidebar_config": "⚙️ Configuración",
+        "sidebar_profile": "👤 Tu Perfil",
+        "db_global": "📚 Base de Datos Global",
+        "map_label": "📍 Mapa:",
+        "analyzed_matches": "📊 Partidas analizadas aquí:",
+        "input_tag": "Player Tag (#...)",
+        "btn_sync": "🔄 Sincronizar Historial",
+        "btn_clear": "🗑️ Limpiar Todo",
+        "your_matches": "☁️ Tus partidas:",
+        "enemies": "### ⚔️ Enemigos",
+        "enemies_label": "Ellos (Counters):",
+        "allies": "### 🤝 Tu Equipo",
+        "allies_label": "Tu aliado (Sinergia):",
+        "recommendations": "### 🧠 Recomendaciones",
+        "settings": "⚙️ Ajustes",
+        "calibration": "**Calibración IA**",
+        "calibration_help": "Partidas 'fantasma' añadidas. Mayor valor = Prioriza brawlers con muchas partidas.",
+        "msg_short_tag": "❌ Tag demasiado corto",
+        "msg_syncing": "Conectando con la nube de BrawlSensei...",
+        "msg_success": "¡Historial cargado!",
+        "msg_info_tag": "Ingresa tu Tag para ver tus estadísticas.",
+        "msg_no_map": "Selecciona un mapa para ver los datos.",
+        "col_brawler": "Brawler",
+        "col_tier": "Pop.",
+        "col_score": "Puntuación",
+        "col_wr": "Tu WinRate",
+        "col_picks": "Picks",
+        "tier_meta": "💎 Meta",
+        "tier_high": "🔥 Alto",
+        "tier_mid": "⚖️ Medio",
+        "tier_low": "⚠️ Bajo",
+        "guide_title": "📖 Cómo usar BrawlSensei",
+        "guide_text": """
+        **Guía Rápida:**
+        1. **📍 Mapa:** Selecciónalo arriba a la izquierda.
+        2. **⚔️ Draft:** Ingresa los brawlers enemigos (para buscar sus counters) y tus aliados (para buscar sinergias).
+        3. **🧠 Análisis:** Revisa la tabla central. Está ordenada por Tier y Puntuación.
+        4. **🚫 Fase de Bans:** Si la App recomienda un brawler con puntuación muy alta (90-100) y tú NO tienes el primer pick, **BANÉALO**.
+        
+        **Leyenda:**
+        * **💎 Meta:** Brawlers Tier S (Muy populares y efectivos).
+        * **⚠️ Bajo:** Pocos datos registrados (Arriesgado).
+        * **🔥/💀 Tu Stats:** Sincroniza tu perfil para ver tu rendimiento personal con cada brawler.
+        
+        **⚠️ IMPORTANTE:** El juego solo guarda tus últimas **25 partidas**. Sincroniza la App frecuentemente para no perder datos.
+        """
+    },
+    "English": {
+        "title": "🏆 BrawlSensei",
+        "caption": "Your tactical assistant to reach Masters",
+        "sidebar_config": "⚙️ Configuration",
+        "sidebar_profile": "👤 Your Profile",
+        "db_global": "📚 Global Database",
+        "map_label": "📍 Map:",
+        "analyzed_matches": "📊 Matches analyzed here:",
+        "input_tag": "Player Tag (#...)",
+        "btn_sync": "🔄 Sync History",
+        "btn_clear": "🗑️ Clear All",
+        "your_matches": "☁️ Your Matches:",
+        "enemies": "### ⚔️ Enemies",
+        "enemies_label": "Them (Counters):",
+        "allies": "### 🤝 Your Team",
+        "allies_label": "Your Ally (Synergy):",
+        "recommendations": "### 🧠 Recommendations",
+        "settings": "⚙️ Settings",
+        "calibration": "**AI Calibration**",
+        "calibration_help": "Ghost matches added. Higher value = Prioritizes brawlers with more data.",
+        "msg_short_tag": "❌ Tag is too short",
+        "msg_syncing": "Connecting to BrawlSensei Cloud...",
+        "msg_success": "History loaded!",
+        "msg_info_tag": "Enter your Tag to see your stats.",
+        "msg_no_map": "Select a map to see data.",
+        "col_brawler": "Brawler",
+        "col_tier": "Tier",
+        "col_score": "Score",
+        "col_wr": "Your WR",
+        "col_picks": "Picks",
+        "tier_meta": "💎 Meta",
+        "tier_high": "🔥 High",
+        "tier_mid": "⚖️ Mid",
+        "tier_low": "⚠️ Low",
+        "guide_title": "📖 How to use BrawlSensei",
+        "guide_text": """
+        **Quick Guide:**
+        1. **📍 Map:** Select it on the top left.
+        2. **⚔️ Draft:** Input enemy brawlers (to find counters) and your allies (to find synergies).
+        3. **🧠 Analysis:** Check the main table. It is sorted by Tier and Score.
+        4. **🚫 Ban Phase:** If the App recommends a brawler with a very high score (90-100) and you do NOT have the first pick, **BAN IT**.
+        
+        **Legend:**
+        * **💎 Meta:** Tier S Brawlers (Very popular and effective).
+        * **⚠️ Low:** Few data recorded (Risky).
+        * **🔥/💀 Your Stats:** Sync your profile to see your personal performance with each brawler.
+        
+        **⚠️ IMPORTANT:** The game only saves your last **25 matches**. Sync the App frequently to build your history.
+        """
+    }
+}
+
 # --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="CouchyBrawl", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="BrawlSensei", layout="wide", initial_sidebar_state="expanded")
 
 # ANCLA PARA IR ARRIBA
 st.markdown("<div id='link_to_top'></div>", unsafe_allow_html=True)
 
-st.title("🏆 CouchyBrawl")
-st.caption("Tu asistente táctico para subir a Maestros")
+# --- SELECTOR DE IDIOMA (BARRA LATERAL) ---
+idioma_seleccionado = st.sidebar.selectbox("Language / Idioma", ["Español", "English"])
+t = TRANSLATIONS[idioma_seleccionado] # 't' es nuestro diccionario activo
+
+st.title(t["title"])
+st.caption(t["caption"])
 
 # ==========================================
 # 🔑 ZONA DE CONFIGURACIÓN DE CLAVES
 # ==========================================
 
 # 1. EN GITHUB ESTO DEBE ESTAR VACÍO ("")
-# Solo pon tu clave real aquí si estás probando en tu PC y NO vas a usar Secrets.
 API_KEY_LOCAL = "" 
 
 # 2. Lógica automática (Prioridad a la Nube)
 try:
-    # Intenta leer de la Nube (Secrets de Streamlit)
     API_KEY = st.secrets["BRAWL_API_KEY"]
 except:
-    # Si falla, usa la local
     API_KEY = API_KEY_LOCAL
 
 # Verificación de seguridad
 if not API_KEY:
-    # Si estamos subiendo a GitHub limpio, esto evita errores visuales hasta que se configure
     API_KEY = "TOKEN_NO_CONFIGURADO"
 
 HEADERS = {"Authorization": f"Bearer {API_KEY}", "Accept": "application/json"}
 BASE_URL = "https://api.brawlstars.com/v1"
 
-# --- CONFIGURACIÓN GOOGLE SHEETS (AUTODETECTABLE) ---
+# --- CONFIGURACIÓN GOOGLE SHEETS ---
 def conectar_google_sheets():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    
-    # Intentamos primero leer de la Nube (Secrets)
     try:
-        # Si esto funciona, estamos en Streamlit Cloud
         creds_dict = dict(st.secrets["gcp_service_account"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     except:
-        # Si falla, asumimos que estamos en LOCAL y buscamos el archivo json
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name('secrets.json', scope)
         except FileNotFoundError:
-            st.error("❌ Error crítico: No se encuentra 'secrets.json' y no hay configuración de Nube.")
+            st.error("❌ Error: secrets.json not found / No se encontró secrets.json")
             st.stop()
     
     client = gspread.authorize(creds)
     sheet = client.open("Base_Datos_Brawl").sheet1
     return sheet
 
-# --- LISTA DE MAPAS ACTUALIZADA ---
+# --- LISTA DE MAPAS ---
 MAPAS_RANKED = [
     "Belle's Rock", "Bridge Too Far", "Center Stage", "Deathcap Trap", "Double Swoosh",
     "Dry Season", "Dueling Beetles", "Excel", "Flaring Phoenix", "Flowing Springs",
@@ -85,7 +185,7 @@ def load_global_data():
 df = load_global_data()
 
 if df is None:
-    st.error("❌ Falta el archivo 'datos_ranked_raw.csv'. Sube el archivo CSV al repositorio.")
+    st.error("❌ Falta el archivo 'datos_ranked_raw.csv'.")
     st.stop()
 
 # --- FUNCIONES AUXILIARES ---
@@ -93,32 +193,28 @@ def limpiar_seleccion():
     st.session_state['enemigos_key'] = []
     st.session_state['aliados_key'] = []
 
-# --- 2. GESTIÓN CLOUD (CON PROXY Y FILTROS) ---
+# --- 2. GESTIÓN CLOUD ---
 def actualizar_historial_nube(player_tag):
     clean_tag = player_tag.replace("#", "").upper()
     
-    # Conexión Sheets
     try:
         hoja = conectar_google_sheets()
     except Exception as e:
-        st.error(f"❌ Error conectando a Google Sheets: {e}")
+        st.error(f"❌ Error Google Sheets: {e}")
         return pd.DataFrame()
 
-    # Preparar conexión API Brawl Stars
     url = f"{BASE_URL}/players/%23{clean_tag}/battlelog"
     nuevos = []
     
-    # --- LÓGICA DE PROXY PARA IP FIJA ---
+    # --- LÓGICA DE PROXY ---
     proxies = {}
     if "proxy" in st.secrets:
-        # Si existe la configuración en secrets, usamos el proxy
         proxies = {
             "http": st.secrets["proxy"]["server"],
             "https": st.secrets["proxy"]["server"]
         }
 
     try:
-        # Hacemos la petición pasando el parámetro 'proxies'
         response = requests.get(url, headers=HEADERS, timeout=10, proxies=proxies)
         
         if response.status_code == 200:
@@ -126,7 +222,7 @@ def actualizar_historial_nube(player_tag):
             items = data.get('items', [])
             
             if not items:
-                st.warning("⚠️ La API respondió OK, pero no trajo partidas (¿Jugaste hace poco?)")
+                st.warning("⚠️ API OK, 0 items found.")
 
             for item in items:
                 battle = item.get('battle', {})
@@ -134,7 +230,6 @@ def actualizar_historial_nube(player_tag):
                 battle_time = item.get('battleTime')
                 map_name = event.get('map') 
                 
-                # --- FILTRO: SOLO MAPAS DE RANKED ---
                 if map_name not in MAPAS_RANKED:
                     continue 
 
@@ -142,7 +237,6 @@ def actualizar_historial_nube(player_tag):
                     result = battle.get('result', 'draw')
                     found_brawler = None
                     
-                    # Buscar jugador en Teams (3v3)
                     if 'teams' in battle:
                         for team in battle['teams']:
                             for p in team:
@@ -150,8 +244,6 @@ def actualizar_historial_nube(player_tag):
                                     found_brawler = p['brawler']['name']
                                     break
                             if found_brawler: break
-                    
-                    # Buscar jugador en Solo (Showdown)
                     elif 'players' in battle:
                         for p in battle['players']:
                             if p['tag'].replace("#", "").upper() == clean_tag:
@@ -164,20 +256,19 @@ def actualizar_historial_nube(player_tag):
                         nuevos.append([clean_tag, battle_time, map_name, found_brawler, win])
         
         elif response.status_code == 404:
-            st.error(f"❌ Jugador no encontrado. Verifica el Tag: #{clean_tag}")
+            st.error(f"❌ Tag invalid: #{clean_tag}")
             return pd.DataFrame()
         elif response.status_code == 403:
-            st.error("❌ Error de Permisos (403). Revisa el API Key o la configuración del Proxy.")
+            st.error("❌ Error 403 (IP/Permission).")
             return pd.DataFrame()
         else:
-            st.error(f"❌ Error API Brawl Stars: Código {response.status_code}")
+            st.error(f"❌ Error API: {response.status_code}")
             return pd.DataFrame()
             
     except Exception as e:
-        st.error(f"❌ Error de conexión: {e}")
+        st.error(f"❌ Connection Error: {e}")
         return pd.DataFrame()
 
-    # Guardado en Sheets
     if nuevos:
         actuales = hoja.get_all_records()
         df_nube = pd.DataFrame(actuales)
@@ -189,50 +280,51 @@ def actualizar_historial_nube(player_tag):
         
         if subir:
             hoja.append_rows(subir)
-            st.toast(f"☁️ Guardadas {len(subir)} partidas RANKED nuevas.", icon="✅")
+            st.toast(f"☁️ +{len(subir)} Ranked matches saved.", icon="✅")
         else:
-            st.toast("✅ Sin novedades (partidas ya guardadas).", icon="ℹ️")
+            st.toast("✅ No new matches.", icon="ℹ️")
     else:
-        st.toast("✅ Sincronizado (No hay partidas RANKED nuevas en el log).", icon="ℹ️")
+        st.toast("✅ Synced (No new ranked matches).", icon="ℹ️")
             
     final = hoja.get_all_records()
     df_t = pd.DataFrame(final)
     if not df_t.empty: return df_t[df_t['player_tag'] == clean_tag]
     return pd.DataFrame()
 
-# --- 3. BARRA LATERAL ---
+# --- 3. BARRA LATERAL (Con Textos Traducidos) ---
 with st.sidebar:
-    st.header("⚙️ Configuración")
-    st.metric(label="📚 Base de Datos Global", value=f"{len(df):,}")
+    st.header(t["sidebar_config"])
+    st.metric(label=t["db_global"], value=f"{len(df):,}")
     
-    mapa_seleccionado = st.selectbox("📍 Mapa:", sorted(df['map'].unique()))
+    mapa_seleccionado = st.selectbox(t["map_label"], sorted(df['map'].unique()))
     if mapa_seleccionado:
         count_mapa = len(df[df['map'] == mapa_seleccionado])
-        st.caption(f"📊 Partidas analizadas aquí: **{count_mapa}**")
+        st.caption(f"{t['analyzed_matches']} **{count_mapa}**")
     
     st.divider()
     
-    st.subheader("👤 Tu Perfil")
-    user_tag = st.text_input("Player Tag (#...)", placeholder="#...")
-    if st.button("🔄 Sincronizar Historial"):
-        if len(user_tag) < 3: st.error("Tag corto")
+    st.subheader(t["sidebar_profile"])
+    user_tag = st.text_input(t["input_tag"], placeholder="#...")
+    if st.button(t["btn_sync"]):
+        if len(user_tag) < 3: st.error(t["msg_short_tag"])
         else:
-            with st.spinner("Conectando con CouchyBrawl Cloud..."):
+            with st.spinner(t["msg_syncing"]):
                 mis_datos = actualizar_historial_nube(user_tag)
                 if not mis_datos.empty:
                     st.session_state['my_history'] = mis_datos
-                    st.success("¡Historial cargado!")
+                    st.success(t["msg_success"])
     
     if 'my_history' in st.session_state and not st.session_state['my_history'].empty:
         hist = st.session_state['my_history']
-        st.caption(f"☁️ Tus partidas: **{len(hist)}**")
+        st.caption(f"{t['your_matches']} **{len(hist)}**")
         hist_sorted = hist.sort_values(by='battle_time', ascending=False)
         preview = hist_sorted.head(5).copy()[['map', 'my_brawler', 'result']]
         preview['result'] = preview['result'].apply(lambda x: "✅" if x == 1 else "❌")
-        preview.columns = ['Mapa', 'Brawler', 'Res']
+        # Traducir columnas de la mini tabla
+        preview.columns = ['Map', 'Brawler', 'Res']
         st.dataframe(preview, hide_index=True, use_container_width=True)
     else:
-        st.info("Ingresa tu Tag para ver tus estadísticas.")
+        st.info(t["msg_info_tag"])
 
 # --- 4. LAYOUT PRINCIPAL ---
 if mapa_seleccionado:
@@ -251,53 +343,39 @@ bloque_izq, bloque_der = st.columns([2, 1.5])
 with bloque_izq:
     col_btn, _ = st.columns([1, 4])
     with col_btn:
-        st.button("🗑️ Limpiar Todo", on_click=limpiar_seleccion)
+        st.button(t["btn_clear"], on_click=limpiar_seleccion)
 
     col_enemigos, col_aliados = st.columns(2)
     with col_enemigos:
-        st.markdown("### ⚔️ Enemigos")
-        enemigos = st.multiselect("Ellos:", sorted(df['my_brawler'].unique()), max_selections=3, key='enemigos_key')
+        st.markdown(t["enemies"])
+        enemigos = st.multiselect(t["enemies_label"], sorted(df['my_brawler'].unique()), max_selections=3, key='enemigos_key')
     with col_aliados:
-        st.markdown("### 🤝 Tu Equipo")
-        aliados = st.multiselect("Tu aliado:", sorted(df['my_brawler'].unique()), max_selections=2, key='aliados_key')
+        st.markdown(t["allies"])
+        aliados = st.multiselect(t["allies_label"], sorted(df['my_brawler'].unique()), max_selections=2, key='aliados_key')
     
     st.markdown("---")
     
-    with st.expander("📖 Cómo usar CouchyBrawl", expanded=False):
-        st.markdown("""
-        **Guía Rápida:**
-        1. **📍 Mapa:** Selecciónalo.
-        2. **⚔️ Draft:** Ingresa brawlers enemigos (descubre sus counters) / ingresa tus aliados (descubre sus sinergias).
-        3. **🧠 Análisis:** Revisa la tabla ordenada por Meta y Puntuación.
-        4. **🚫 Fase de Bans:** La App no tiene botón de "Bans", pero tú usa tu cerebro: Si la App dice que Piper y Nani son las mejores (tienen el puntaje más alto), **BANÉALAS** si no tienes el primer pick, o déjalas libres si tú vas a elegir primero.
-        
-        **Leyenda:**
-        * **💎 Meta:** Brawlers muy populares (Tier S).
-        * **⚠️ Bajo:** Pocos datos. Arriesgado.
-        * **🔥/💀 Tu rendimiento personal:** Agrega tu Player Tag y "sincroniza el historial" para conocer tus puntos fuertes y débiles.
-        
-        **⚠️ ¡ATENCIÓN!** Hay un límite de registro de partidas en el juego: ¡son tus últimas **25 partidas jugadas**! Sé inteligente y carga/sincroniza tus partidas cada vez que juegues Ranked para ir acumulando datos en tu historial.
-        """)
+    with st.expander(t["guide_title"], expanded=False):
+        st.markdown(t["guide_text"])
 
 # --- B. BLOQUE DERECHO ---
 with bloque_der:
     col_titulo, col_ajustes = st.columns([4, 1])
     
     with col_titulo:
-        st.markdown("### 🧠 Recomendaciones")
+        st.markdown(t["recommendations"])
     
     with col_ajustes:
-        with st.popover("⚙️ Ajustes", help="Configurar cálculo matemático"):
-            st.markdown("**Calibración IA**")
+        with st.popover(t["settings"]):
+            st.markdown(t["calibration"])
             C = st.slider(
-                "Suavizado (C)", 
+                "C", 
                 min_value=0, 
                 max_value=200, 
                 value=100, 
                 step=10,
-                help="Partidas 'fantasma' añadidas. Mayor valor = Prioriza brawlers con muchas partidas."
+                help=t["calibration_help"]
             )
-            st.caption(f"Valor actual: {C}")
 
     if not meta_mapa.empty:
         recomendaciones = meta_mapa.copy()
@@ -361,10 +439,11 @@ with bloque_der:
             picks = row['partidas_mapa']
             tier = row['Tier']
             
-            if tier == 4: tier_label = "💎 Meta"
-            elif tier == 3: tier_label = "🔥 Alto"
-            elif tier == 2: tier_label = "⚖️ Medio"
-            else: tier_label = "⚠️ Bajo"
+            # Traducción dinámica de Tiers
+            if tier == 4: tier_label = t["tier_meta"]
+            elif tier == 3: tier_label = t["tier_high"]
+            elif tier == 2: tier_label = t["tier_mid"]
+            else: tier_label = t["tier_low"]
 
             if posicion == 0: display_name = f"🥇 {brawler_name}"
             elif posicion == 1: display_name = f"🥈 {brawler_name}"
@@ -380,11 +459,11 @@ with bloque_der:
                     personal_str = f"{wr_personal}% {icon}"
             
             tabla_data.append({
-                "Brawler": display_name,
-                "Pop.": tier_label,
-                "Puntuación": score, 
-                "Tu WinRate": personal_str,
-                "Picks": picks
+                t["col_brawler"]: display_name,
+                t["col_tier"]: tier_label,
+                t["col_score"]: score, 
+                t["col_wr"]: personal_str,
+                t["col_picks"]: picks
             })
         
         df_tabla = pd.DataFrame(tabla_data)
@@ -394,19 +473,19 @@ with bloque_der:
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Brawler": st.column_config.TextColumn("Brawler", width="medium"),
-                "Pop.": st.column_config.TextColumn("Tier", width="small"),
-                "Puntuación": st.column_config.ProgressColumn( 
-                    "Puntuación",
+                t["col_brawler"]: st.column_config.TextColumn(t["col_brawler"], width="medium"),
+                t["col_tier"]: st.column_config.TextColumn(t["col_tier"], width="small"),
+                t["col_score"]: st.column_config.ProgressColumn( 
+                    t["col_score"],
                     format="%.1f",
                     min_value=0,
                     max_value=100,
                 ),
-                "Tu WinRate": st.column_config.TextColumn("Tu Stats"),
-                "Picks": st.column_config.NumberColumn("Picks", format="%d"),
+                t["col_wr"]: st.column_config.TextColumn(t["col_wr"]),
+                t["col_picks"]: st.column_config.NumberColumn(t["col_picks"], format="%d"),
             }
         )
     else:
-        st.info("Selecciona un mapa para ver los datos.")
+        st.info(t["msg_no_map"])
 
     st.markdown("<br><div style='text-align: center;'><a href='#link_to_top' style='color: grey; text-decoration: none;'>⬆️ Volver Arriba</a></div>", unsafe_allow_html=True)
