@@ -4,7 +4,7 @@ import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. DICCIONARIO DE TRADUCCIONES (IDIOMAS) ---
+# --- 1. DICCIONARIO DE TRADUCCIONES (TEXTOS UI) ---
 TRANSLATIONS = {
     "Español": {
         "title": "🏆 BrawlSensei",
@@ -108,6 +108,40 @@ TRANSLATIONS = {
     }
 }
 
+# --- 2. DICCIONARIO DE MAPAS (English -> Español) ---
+MAP_NAME_TRANSLATIONS = {
+    "Deathcap Trap": "Hiedra venenosa",
+    "Dry Season": "Sequía sanguinaria",
+    "Hideout": "Escondite",
+    "Layer Cake": "Crimen organizado",
+    "Shooting Star": "Tiroteo estelar",
+    "Center Stage": "Palco central",
+    "Grass Knot": "Campo de hierba",
+    "Pinball Dreams": "Pinball",
+    "Sneaky Fields": "Campos furtivos",
+    "Spiraling Out": "Efecto envolvente",
+    "Triple Dribble": "Triple drible",
+    "Double Swoosh": "Brrrum brrrum",
+    "Gem Fort": "Fuerte de gemas",
+    "Hard Rock Mine": "Mina rocosa",
+    "Undermine": "Cueva subterránea",
+    "Bridge Too Far": "Aguas turbulentas",
+    "Hot Potato": "Patata caliente",
+    "Kaboom Canyon": "Cañón explosivo",
+    "Safe Zone": "Refugio",
+    "Dueling Beetles": "Duelo de escarabajos",
+    "In the Liminal": "Al límite",
+    "Open Business": "Campo abierto",
+    "Parallel Plays": "Estrategias paralelas",
+    "Ring of Fire": "Pista ardiente",
+    "Belle's Rock": "Roca de Belle",
+    "Flaring Phoenix": "Fénix en llamas",
+    "Flowing Springs": "Manantial caudaloso",
+    "Goldarm Gulch": "Barranco del brazo de oro",
+    "New Horizons": "Nuevos horizontes",
+    "Out in the Open": "A la intemperie"
+}
+
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="BrawlSensei", layout="wide", initial_sidebar_state="expanded")
 
@@ -116,7 +150,7 @@ st.markdown("<div id='link_to_top'></div>", unsafe_allow_html=True)
 
 # --- SELECTOR DE IDIOMA (BARRA LATERAL) ---
 idioma_seleccionado = st.sidebar.selectbox("Language / Idioma", ["Español", "English"])
-t = TRANSLATIONS[idioma_seleccionado] # 't' es nuestro diccionario activo
+t = TRANSLATIONS[idioma_seleccionado] 
 
 st.title(t["title"])
 st.caption(t["caption"])
@@ -125,16 +159,11 @@ st.caption(t["caption"])
 # 🔑 ZONA DE CONFIGURACIÓN DE CLAVES
 # ==========================================
 
-# 1. EN GITHUB ESTO DEBE ESTAR VACÍO ("")
 API_KEY_LOCAL = "" 
-
-# 2. Lógica automática (Prioridad a la Nube)
 try:
     API_KEY = st.secrets["BRAWL_API_KEY"]
 except:
     API_KEY = API_KEY_LOCAL
-
-# Verificación de seguridad
 if not API_KEY:
     API_KEY = "TOKEN_NO_CONFIGURADO"
 
@@ -151,7 +180,7 @@ def conectar_google_sheets():
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name('secrets.json', scope)
         except FileNotFoundError:
-            st.error("❌ Error: secrets.json not found / No se encontró secrets.json")
+            st.error("❌ Error: secrets.json not found")
             st.stop()
     
     client = gspread.authorize(creds)
@@ -196,7 +225,6 @@ def limpiar_seleccion():
 # --- 2. GESTIÓN CLOUD ---
 def actualizar_historial_nube(player_tag):
     clean_tag = player_tag.replace("#", "").upper()
-    
     try:
         hoja = conectar_google_sheets()
     except Exception as e:
@@ -205,8 +233,6 @@ def actualizar_historial_nube(player_tag):
 
     url = f"{BASE_URL}/players/%23{clean_tag}/battlelog"
     nuevos = []
-    
-    # --- LÓGICA DE PROXY ---
     proxies = {}
     if "proxy" in st.secrets:
         proxies = {
@@ -220,7 +246,6 @@ def actualizar_historial_nube(player_tag):
         if response.status_code == 200:
             data = response.json()
             items = data.get('items', [])
-            
             if not items:
                 st.warning("⚠️ API OK, 0 items found.")
 
@@ -236,7 +261,6 @@ def actualizar_historial_nube(player_tag):
                 if 'event' in item and 'map' in item['event']:
                     result = battle.get('result', 'draw')
                     found_brawler = None
-                    
                     if 'teams' in battle:
                         for team in battle['teams']:
                             for p in team:
@@ -264,7 +288,6 @@ def actualizar_historial_nube(player_tag):
         else:
             st.error(f"❌ Error API: {response.status_code}")
             return pd.DataFrame()
-            
     except Exception as e:
         st.error(f"❌ Connection Error: {e}")
         return pd.DataFrame()
@@ -291,12 +314,33 @@ def actualizar_historial_nube(player_tag):
     if not df_t.empty: return df_t[df_t['player_tag'] == clean_tag]
     return pd.DataFrame()
 
-# --- 3. BARRA LATERAL (Con Textos Traducidos) ---
+# --- 3. BARRA LATERAL (LÓGICA DE MAPAS EN ESPAÑOL) ---
 with st.sidebar:
     st.header(t["sidebar_config"])
     st.metric(label=t["db_global"], value=f"{len(df):,}")
     
-    mapa_seleccionado = st.selectbox(t["map_label"], sorted(df['map'].unique()))
+    # --- LOGICA DE TRADUCCIÓN DE MAPAS ---
+    # Función para mostrar el nombre correcto según el idioma
+    def get_map_label(map_internal_name):
+        if idioma_seleccionado == "Español":
+            return MAP_NAME_TRANSLATIONS.get(map_internal_name, map_internal_name)
+        return map_internal_name
+
+    # Obtenemos mapas únicos (en inglés)
+    unique_maps = df['map'].unique()
+    
+    # Ordenamos la lista basada en cómo se VERÁ (si es español, ordenamos por nombre español)
+    sorted_maps = sorted(unique_maps, key=lambda x: get_map_label(x))
+    
+    # Creamos el selectbox usando format_func
+    # Internamente 'mapa_seleccionado' tendrá el valor en INGLÉS (ej: "Bridge Too Far")
+    # Pero el usuario verá "Aguas turbulentas"
+    mapa_seleccionado = st.selectbox(
+        t["map_label"], 
+        sorted_maps, 
+        format_func=get_map_label
+    )
+    
     if mapa_seleccionado:
         count_mapa = len(df[df['map'] == mapa_seleccionado])
         st.caption(f"{t['analyzed_matches']} **{count_mapa}**")
@@ -320,7 +364,11 @@ with st.sidebar:
         hist_sorted = hist.sort_values(by='battle_time', ascending=False)
         preview = hist_sorted.head(5).copy()[['map', 'my_brawler', 'result']]
         preview['result'] = preview['result'].apply(lambda x: "✅" if x == 1 else "❌")
-        # Traducir columnas de la mini tabla
+        
+        # Traducir nombre del mapa en la mini-tabla también
+        if idioma_seleccionado == "Español":
+            preview['map'] = preview['map'].apply(lambda x: MAP_NAME_TRANSLATIONS.get(x, x))
+            
         preview.columns = ['Map', 'Brawler', 'Res']
         st.dataframe(preview, hide_index=True, use_container_width=True)
     else:
